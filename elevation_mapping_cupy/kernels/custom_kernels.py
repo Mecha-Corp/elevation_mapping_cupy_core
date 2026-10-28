@@ -144,6 +144,8 @@ def add_points_kernel(
     enable_edge_shaped=True,
     enable_visibility_cleanup=True,
 ):
+    # The residual combines cell and measurement variance. Compare distances
+    # with sqrt(map_v + v), preserving the configured Mahalanobis multiplier.
     add_points_kernel = cp.ElementwiseKernel(
         in_params="raw U center_x, raw U center_y, raw U R, raw U t, raw U norm_map",
         out_params="raw U p, raw U map, raw T newmap",
@@ -173,11 +175,11 @@ def add_points_kernel(
                     U map_h = map[get_map_idx(idx, 0)];
                     U map_v = map[get_map_idx(idx, 1)];
                     U num_points = newmap[get_map_idx(idx, 4)];
-                    if (abs(map_h - z) > (map_v * ${mahalanobis_thresh})) {
+                    if (abs(map_h - z) > (sqrt(map_v + v) * ${mahalanobis_thresh})) {
                         atomicAdd(&map[get_map_idx(idx, 1)], ${outlier_variance});
                     }
                     else {
-                        if (${enable_edge_shaped} && (num_points > ${wall_num_thresh}) && (z < map_h - map_v * ${mahalanobis_thresh} / num_points)) {
+                        if (${enable_edge_shaped} && (num_points > ${wall_num_thresh}) && (z < map_h - sqrt(map_v + v) * ${mahalanobis_thresh} / num_points)) {
                           // continue;
                         }
                         else {
@@ -328,7 +330,7 @@ def error_counting_kernel(
             U map_v = map[get_map_idx(idx, 1)];
             U map_valid = map[get_map_idx(idx, 2)];
             U map_t = map[get_map_idx(idx, 3)];
-            if (map_valid > 0.5 && (abs(map_h - z) < (map_v * ${mahalanobis_thresh}))
+            if (map_valid > 0.5 && (abs(map_h - z) < (sqrt(map_v + v) * ${mahalanobis_thresh}))
                 && map_v < ${outlier_variance} / 2.0
                 && map_t > ${traversability_inlier}) {
                 T e = z - map_h;
