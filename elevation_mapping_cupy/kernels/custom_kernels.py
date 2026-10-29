@@ -143,6 +143,7 @@ def add_points_kernel(
     ramped_height_range_c,
     enable_edge_shaped=True,
     enable_visibility_cleanup=True,
+    enable_height_fusion=True,
 ):
     # The residual combines cell and measurement variance. Compare distances
     # with sqrt(map_v + v), preserving the configured Mahalanobis multiplier.
@@ -170,7 +171,7 @@ def add_points_kernel(
             U z = transform_p(rx, ry, rz, R[6], R[7], R[8], t[2]);
             U v = point_noise(rx, ry, rz);
             int idx = get_idx(x, y, center_x[0], center_y[0]);
-            if (is_valid(x, y, z, t[0], t[1], t[2])) {
+            if (${enable_height_fusion} && is_valid(x, y, z, t[0], t[1], t[2])) {
                 if (is_inside(idx)) {
                     U map_h = map[get_map_idx(idx, 0)];
                     U map_v = map[get_map_idx(idx, 1)];
@@ -276,6 +277,7 @@ def add_points_kernel(
             cleanup_cos_thresh=cleanup_cos_thresh,
             enable_edge_shaped=int(enable_edge_shaped),
             enable_visibility_cleanup=int(enable_visibility_cleanup),
+            enable_height_fusion=int(enable_height_fusion),
         ),
         name="add_points_kernel",
     )

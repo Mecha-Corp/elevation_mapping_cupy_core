@@ -42,3 +42,18 @@ elevation = em.get_map_with_name("elevation")
 ## License
 
 MIT — Copyright (c) 2022 ETH Zurich, Takahiro Miki. See [LICENSE](LICENSE).
+The optional ANYbotics multi-height fusion port carries the
+[BSD-3-Clause notice](LICENSE-ANYbotics.txt).
+
+## Sequential multi-height fusion
+
+`Parameter(enable_multi_height_fusion=True)` selects the ANYbotics per-cell
+update in [multi_height.py](elevation_mapping_cupy/kernels/multi_height.py).
+It replaces averaged point fusion and density-based edge sharpening; existing
+map movement, visibility cleanup, drift compensation and publication still
+belong to `ElevationMap`. The default remains the original CuPy fusion.
+
+The caller must advance `update_time()` using acquisition-time intervals, as
+with the original mapper. New parameter defaults and upstream provenance are
+declared in `Parameter`; the port's intentional differences are documented at
+the kernel. This option does not select a sensor noise model or sensor preset.
