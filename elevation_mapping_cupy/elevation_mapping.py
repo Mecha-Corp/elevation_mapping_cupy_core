@@ -27,6 +27,7 @@ from elevation_mapping_cupy.kernels import dilation_filter_kernel
 from elevation_mapping_cupy.kernels import normal_filter_kernel
 from elevation_mapping_cupy.kernels import polygon_mask_kernel
 from elevation_mapping_cupy.kernels import image_to_map_correspondence_kernel
+from elevation_mapping_cupy.kernels.multi_height import multi_height_kernels
 
 from elevation_mapping_cupy.map_initializer import MapInitializer
 from elevation_mapping_cupy.plugins.plugin_manager import PluginManager
@@ -337,7 +338,10 @@ class ElevationMap:
             self.param.ramped_height_range_c,
             self.param.enable_edge_sharpen,
             self.param.enable_visibility_cleanup,
+            enable_height_fusion=not self.param.enable_multi_height_fusion,
         )
+        if self.param.enable_multi_height_fusion:
+            self.multi_height_index_kernel, self.multi_height_fusion_kernel = multi_height_kernels(self.param)
         self.error_counting_kernel = error_counting_kernel(
             self.resolution,
             self.cell_n,
@@ -439,6 +443,22 @@ class ElevationMap:
                     self.elevation_map[0] += self.mean_error * self.param.drift_compensation_alpha
 
             
+            if self.param.enable_multi_height_fusion:
+                # Stable grouping preserves the input order within each cell,
+                # matching upstream's sequential updates without a global loop.
+                indices, heights, variances = self.multi_height_index_kernel(
+                    points, R, t, size=points.shape[0]
+                )
+                order = cp.lexsort(cp.stack((cp.arange(points.shape[0]), indices)))
+                offsets = cp.searchsorted(
+                    indices[order], cp.arange(self.cell_n * self.cell_n + 1)
+                )
+                self.multi_height_fusion_kernel(
+                    order, offsets, heights, variances, self.elevation_map,
+                    self.new_map, size=self.cell_n * self.cell_n,
+                )
+
+            # Retains the native visibility cleanup and semantic point metadata.
             self.add_points_kernel(
                 cp.array([0.0], dtype=self.data_type),
                 cp.array([0.0], dtype=self.data_type),

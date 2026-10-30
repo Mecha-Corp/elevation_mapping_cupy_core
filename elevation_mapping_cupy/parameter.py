@@ -34,7 +34,7 @@ class Parameter(Serializable):
                         (Default: ``0.5``)
         map_length: The map's size in meters.  
                     (Default: ``8.0``)
-        sensor_noise_factor: The point's noise is sensor_noise_factor*z^2 (z is distance from sensor).  
+        sensor_noise_factor: Point variance = sensor_noise_factor * (x^2 + y^2 + z^2), in sensor coordinates.
                             (Default: ``0.05``)
         mahalanobis_thresh: Points outside this distance is outlier.  
                             (Default: ``2.0``)
@@ -159,7 +159,7 @@ class Parameter(Serializable):
     average_weight: float = 0.5  # weight for the average fusion
 
     map_length: float = 8.0  # map's size in m.
-    sensor_noise_factor: float = 0.05  # point's noise is sensor_noise_factor*z^2 (z is distance from sensor).
+    sensor_noise_factor: float = 0.05  # variance = factor * squared sensor-frame range.
     mahalanobis_thresh: float = 2.0  # points outside this distance is outlier.
     outlier_variance: float = 0.01  # if point is outlier, add this value to the cell.
     drift_compensation_variance_inlier: float = 0.1  # cells under this value is used for drift compensation.
@@ -195,6 +195,14 @@ class Parameter(Serializable):
     overlap_clear_range_z: float = 2.0  # z range [m] for clearing overlapped area. cells outside this range will be cleared. (used for multi floor setting)
 
     enable_edge_sharpen: bool = True  # enable edge sharpening
+    # Opt-in fusion; robot-independent defaults from readParameters().
+    # https://github.com/ANYbotics/elevation_mapping/blob/f4b082c64a3e660980da53b33c7936a8f2a2ea22/elevation_mapping/src/ElevationMapping.cpp#L231-L241
+    # Caller owns noise, Mahalanobis multiplier and max variance. Gate: cell variance.
+    enable_multi_height_fusion: bool = False
+    scanning_duration: float = 1.0  # seconds since the cell's last normal fusion
+    increase_height_alpha: float = 0.0  # previous height's weight on a higher outlier
+    multi_height_noise: float = 0.003 ** 2  # variance added for an older outlier
+    min_variance: float = 0.003 ** 2  # lower variance bound after a cloud
     enable_drift_compensation: bool = True  # enable drift compensation
     enable_visibility_cleanup: bool = True  # enable visibility cleanup
     enable_overlap_clearance: bool = True  # enable overlap clearance
