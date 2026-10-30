@@ -26,20 +26,15 @@
 
 https://github.com/ANYbotics/elevation_mapping/blob/f4b082c64a3e660980da53b33c7936a8f2a2ea22/elevation_mapping/src/ElevationMap.cpp#L128-L177
 
-Distinct cells run in parallel; points in one cell retain cloud order. Recent
-lower outliers are ignored, higher ones replace/blend the surface, and older
-outliers increase uncertainty. Inliers use sequential Kalman updates, rather
-than averaging posteriors computed against one shared prior. This mode replaces
-the density-based edge rule, not the sensor model, drift correction or cleanup.
-
-The existing time layer stores age, equivalent to upstream's scan time minus
-last update time. Only an ordinary inlier refreshes an existing cell, as upstream
-does. One intentional difference: the initial measurement also initializes age
-to zero. Upstream leaves its time undefined until the next inlier; the native
-CuPy/host contract requires every observed cell to have a finite age.
-Height, variance, validity and age stay owned by ElevationMap and roll together.
-CuPy's upper-bound and semantic count layers are maintained for its consumers;
-ROS, horizontal covariance and color fusion are not imported.
+Ordering: one writer per cell; cloud order within each cell.
+Fusion: recent lower outliers ignored; higher outliers replace/blend; old
+outliers increase variance; inliers update sequentially and reset age.
+Age: acquisition time since last inlier. Intentional upstream difference:
+first observations start at age zero, satisfying the finite-age wire contract.
+Ownership: ElevationMap retains height/variance/validity/age and rolling state.
+Integration: replace averaged fusion and density sharpening; retain native
+noise geometry, drift correction, visibility, upper-bound and semantic layers.
+Scope: no sensor preset, ROS, horizontal covariance or color fusion.
 """
 
 import string
